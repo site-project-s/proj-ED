@@ -11,7 +11,7 @@ void formatar_rodape(char *destino, size_t tamanho);
 int imprimir_formulario_txt(const char *caminho, const char *cabecalho, const char *conteudo, const char *rodape);
 int editar_formulario_txt(const char *caminho);
 
-/* structs*/
+/* structs */
 
 typedef struct Vereador
 {
@@ -60,6 +60,7 @@ typedef struct Votacao
     char voto[15];
     struct Votacao *prox;
 } Votacao;
+
 enum TipoBloco 
 {
     BLOCO_TEXTO = 1,
@@ -85,105 +86,16 @@ typedef struct BlocoDocumento
     struct BlocoDocumento *prox;
 } BlocoDocumento;
 
-/* listas */
-
-const char *NOMES_BASE[] = {
-    "Arthur", "Oliveira", "Patriota",
-    "Lemos", "Conceicao", "Emidio",
-    "Araujo", "Andrey", "Assis",
-    "Correia", "Cayo", "Lins",
-    "Mathaus", "Mickael", "D'Silva",
-    "Chaves", "Santiago", "Ferreira",
-    "Santos", "Silver", "Prata",
-    "Contes", "Mike", "Azevedo",
-    "Junior", "Descassa", "Sentiu",
-    "Lenicia", "Joao", "Mario",
-    "Carlos", "Silva", "Santos",
-    "Souza", "Pereira", "Lima",
-    "Ana", "Beatriz", "Lucas",
-    "Leticia", "Mandraque", "Jonas",
-    "INSIRA_NOME_BRABO"};
-const int TOTAL_NOMES = sizeof(NOMES_BASE) / sizeof(NOMES_BASE[0]);
-
-const char *PARTIDOS[] = {
-    "PIC", "PICHICA", "PIQB",
-    "PIF", "TPM", "PF",
-    "PSCRR", "NOVO", "ANTIGO",
-    "PSC", "PNET", "PP",
-    "FON"};
-const int TOTAL_PARTIDOS = sizeof(PARTIDOS) / sizeof(PARTIDOS[0]);
-
-const char *DOMINIOS[] = {
-    "camara.leg.br",
-    "gmail.com",
-    "outlook.com",
-    "ic.ufal.br",
-    "lves.com.br",
-    "camara.gov.br",
-    "fbi.gov.us",
-    "hacker.tor.br",
-    "empty.none.go"};
-const int TOTAL_DOMINIOS = sizeof(DOMINIOS) / sizeof(DOMINIOS[0]);
-
-const char *ACOES_BASE[] = {
-    "Institucionalizacao", "Regulamentacao",
-    "Memificacao", "Fomento",
-    "Proibicao", "Padronizacao",
-    "Valorizacao", "Nacionalizacao",
-    "Precarizacao", "Clusteriacao",
-    "Oficializacao", "Consideracao",
-    "Perdao", "Informe",
-    "Ementa", "Documentalizacao"};
-const int TOTAL_ACOES = sizeof(ACOES_BASE) / sizeof(ACOES_BASE[0]);
-
-const char *TEMAS_BASE[] = {
-    "Saude", "Violencia", "Representacao",
-    "Patriotismo", "Panificacao", "Cambio",
-    "Educacao", "Cultura", "Criptomoedas",
-    "Gastronomia", "Seguranca", "CyberSeguranca",
-    "Residuos", "Polica"};
-const int TOTAL_TEMAS = sizeof(TEMAS_BASE) / sizeof(TEMAS_BASE[0]);
-
-const char *CATEGORIAS[] = {
-    "Saude", "Educacao", "Infraestrutura",
-    "Meio Ambiente", "Seguranca", "Financas",
-    "Migueh", "Inutil", "Trapaceio", "Manobra Legal",
-    "Greve"};
-
-const int TOTAL_CATEGORIAS = sizeof(CATEGORIAS) / sizeof(CATEGORIAS[0]);
-
-const char *STATUS_PROJ[] = {
-    "Em Tramitacao",
-    "Aprovado",
-    "Rejeitado",
-    "Arquivado"};
-const int TOTAL_STATUS_PROJ = sizeof(STATUS_PROJ) / sizeof(STATUS_PROJ[0]);
-
-const char *STATUS_PRESENCA[] = {
-    "presente",
-    "ausente",
-    "justificado"};
-const int TOTAL_PRESENCA = sizeof(STATUS_PRESENCA) / sizeof(STATUS_PRESENCA[0]);
-
-const char *VOTOS[] = {
-    "Favoravel",
-    "Contrario",
-    "Abstencao"};
-const int TOTAL_VOTOS = sizeof(VOTOS) / sizeof(VOTOS[0]);
-
-// ============================================================================
-//   FUNÇÕES BASICAS
-// ============================================================================
 
 int ler_inteiro_seguro() 
 {
-    char linha [128];
+    char linha[128];
     char *fim;
     long valor;
 
     while (1)
     {
-        if (!fgets(linha, sizeof (linha), stdin)) return -1; 
+        if (!fgets(linha, sizeof(linha), stdin)) return -1; 
         linha[strcspn(linha, "\n")] = 0;
         
         errno = 0; 
@@ -191,7 +103,7 @@ int ler_inteiro_seguro()
 
         if (fim == linha || *fim != '\0' || errno == ERANGE)
         {
-            printf("[!] Entrada inválida. Digite apenas números válidos: ");
+            printf("[!] Entrada invalida. Digite apenas numeros validos: ");
         }
         else 
         {
@@ -200,7 +112,6 @@ int ler_inteiro_seguro()
     }
 }
 
-
 void formatar_texto_alinhado(char *destino, size_t tamanho_destino, const char *texto, int alinhamento)
 {
     size_t tam_texto = strlen(texto);
@@ -208,24 +119,22 @@ void formatar_texto_alinhado(char *destino, size_t tamanho_destino, const char *
     
     if (tam_texto >= largura_maxima || alinhamento == ALINHA_ESQUERDA)
     {
-        snprintf ( destino, tamanho_destino, "%s\n\n", texto); 
+        snprintf(destino, tamanho_destino, "%s\n\n", texto); 
         return; 
     }
 
     int espacos = 0;
-    if(alinhamento == ALINHA_DIREITA)
+    if (alinhamento == ALINHA_DIREITA)
     {
         espacos = largura_maxima - tam_texto;
     }
-    else if ( alinhamento == ALINHA_CENTRO)
+    else if (alinhamento == ALINHA_CENTRO)
     {
-        espacos = ( largura_maxima - tam_texto) / 2; 
+        espacos = (largura_maxima - tam_texto) / 2; 
     }
 
     snprintf(destino, tamanho_destino, "%*s%s\n\n", espacos, "", texto);
-
 }
-
 
 void limpar_tela()
 {
@@ -239,7 +148,7 @@ void limpar_tela()
 void pausar_tela()
 {
     printf("\nPressione ENTER para continuar...");
-    getchar();
+    getchar(); // Pode usar getchar diretamente aqui pois a limpeza da tela não recebe entradas inteiras
 }
 
 void copiar_string(char *pra_ca, const char *daqui, size_t tamanho_max)
@@ -301,23 +210,7 @@ int carregar_todos_ids(const char *caminho, int ids[], int max_ids)
     return qtd;
 }
 
-void sortear_tema_complexo(char *destino, size_t tam_max, const char *prefixo)
-{
-    int acao = rand() % TOTAL_ACOES;
-    int tema1 = rand() % TOTAL_TEMAS;
-    int tema2 = rand() % TOTAL_TEMAS;
-
-    if (prefixo && strlen(prefixo) > 0)
-    {
-        snprintf(destino, tam_max, "%s %s de %s de %s", prefixo, ACOES_BASE[acao], TEMAS_BASE[tema1], TEMAS_BASE[tema2]);
-    }
-    else
-    {
-        snprintf(destino, tam_max, "%s de %s de %s", ACOES_BASE[acao], TEMAS_BASE[tema1], TEMAS_BASE[tema2]);
-    }
-}
-
-/* carregamento de dados*/
+/* carregamento de dados */
 
 char* extrair_campo(char **resto_da_linha) {
     if (*resto_da_linha == NULL) return ""; 
@@ -334,7 +227,6 @@ char* extrair_campo(char **resto_da_linha) {
     
     return inicio;
 }
-
 
 Vereador *carregar_vereadores(const char *caminho)
 {
@@ -378,6 +270,7 @@ Vereador *carregar_vereadores(const char *caminho)
     fclose(f);
     return head;
 } 
+
 Reuniao *carregar_reunioes(const char *caminho)
 {
     FILE *f = fopen(caminho, "r");
@@ -417,7 +310,6 @@ Reuniao *carregar_reunioes(const char *caminho)
     fclose(f);
     return head;
 }
-
 
 Projeto *carregar_projetos(const char *caminho)
 {
@@ -498,6 +390,7 @@ Presenca *carregar_presencas(const char *caminho)
     fclose(f);
     return head;
 }
+
 Votacao *carregar_votacoes(const char *caminho)
 {
     FILE *f = fopen(caminho, "r");
@@ -544,7 +437,7 @@ Votacao *carregar_votacoes(const char *caminho)
     return head;
 }
 
-/* liberação de memória*/
+/* liberação de memória */
 
 void liberar_vereadores(Vereador *head)
 {
@@ -555,6 +448,7 @@ void liberar_vereadores(Vereador *head)
         free(t);
     }
 }
+
 void liberar_reunioes(Reuniao *head)
 {
     while (head)
@@ -564,6 +458,7 @@ void liberar_reunioes(Reuniao *head)
         free(t);
     }
 }
+
 void liberar_projetos(Projeto *head)
 {
     while (head)
@@ -573,6 +468,7 @@ void liberar_projetos(Projeto *head)
         free(t);
     }
 }
+
 void liberar_presencas(Presenca *head)
 {
     while (head)
@@ -582,6 +478,7 @@ void liberar_presencas(Presenca *head)
         free(t);
     }
 }
+
 void liberar_votacoes(Votacao *head)
 {
     while (head)
@@ -591,6 +488,7 @@ void liberar_votacoes(Votacao *head)
         free(t);
     }
 }
+
 void liberar_blocos(BlocoDocumento *head)
 {
     while (head)
@@ -617,6 +515,7 @@ int estava_presente_memoria(Presenca *head_presenca, int id_reuniao, int id_vere
     return 0;
 }
 
+/* Otimização Extrema de Memória */
 void gerar_votacoes_completas_otimizada(
     const char *caminho_saida,
     Reuniao *lista_reunioes,
@@ -631,7 +530,6 @@ void gerar_votacoes_completas_otimizada(
         return;
     }
 
-    // 1 Descobre os limites reais dos IDs (elimina o limite rigido de 100)
     int max_reuniao = 0;
     int max_vereador = 0;
     Presenca *aux = lista_presencas;
@@ -645,7 +543,6 @@ void gerar_votacoes_completas_otimizada(
         aux = aux->prox;
     }
 
-    // 2 Aloca matriz plana 1D mapeada dinamicamente (Proteção contra Memory Leak)
     int colunas = max_vereador + 1;
     int *presentes = (int *)calloc((max_reuniao + 1) * colunas, sizeof(int));
     if (!presentes)
@@ -655,7 +552,6 @@ void gerar_votacoes_completas_otimizada(
         return;
     }
 
-    // 3 Preenche a matriz dinâmica contígua usando (linha * colunas + coluna)
     aux = lista_presencas;
     while (aux)
     {
@@ -666,7 +562,6 @@ void gerar_votacoes_completas_otimizada(
         aux = aux->prox;
     }
 
-    // 4 Processamento sequencial e gravacao no arquivo
     int id_votacao = 1;
     Reuniao *r = lista_reunioes;
 
@@ -678,14 +573,13 @@ void gerar_votacoes_completas_otimizada(
             Vereador *v = lista_vereadores;
             while (v)
             {
-                // Checa a presenca com a nova matriz dinâmica
                 if (r->id_reuniao <= max_reuniao && 
                     v->id_vereador <= max_vereador &&
                     presentes[r->id_reuniao * colunas + v->id_vereador])
                 {
                     fprintf(f, "%d;%d;%d;%d;SIM\n",
                             id_votacao++,
-                            p->id_proj, // Usando id_proj como ajustamos anteriormente
+                            p->id_proj,
                             r->id_reuniao,
                             v->id_vereador);
                 }
@@ -696,14 +590,12 @@ void gerar_votacoes_completas_otimizada(
         r = r->prox;
     }
 
-    // 5. Fechamento do arquivo e liberacao OBRIGATÓRIA da memoria
     fclose(f);
     free(presentes);
     printf("[OK] Processamento de votacoes finalizado e memoria liberada com sucesso!\n");
 }
 
-
-/* blocos do documento*/
+/* blocos do documento */
 
 int obter_proximo_id_bloco(BlocoDocumento *head)
 {
@@ -755,13 +647,24 @@ const char *obter_titulo_fonte(int fonte)
     }
 }
 
+/* Macro para escrita segura com prevenção de underflow */
+#define ADD_TEXT(...) do { \
+    if (usado < tamanho_max) { \
+        int esc = snprintf(destino + usado, tamanho_max - usado, __VA_ARGS__); \
+        if (esc > 0) { \
+            usado += esc; \
+            if (usado >= tamanho_max) usado = tamanho_max - 1; \
+        } \
+    } \
+} while(0)
+
 void renderizar_conteudo_do_relatorio(BlocoDocumento *head, char *destino, size_t tamanho_max)
 {
     destino[0] = '\0';
     size_t usado = 0;
     int pagina_atual = 1;
 
-    usado += snprintf(destino + usado, tamanho_max - usado, "--- PÁGINA %d ---\n\n", pagina_atual);
+    ADD_TEXT("--- PÁGINA %d ---\n\n", pagina_atual);
 
     BlocoDocumento *atual = head;
     while (atual)
@@ -769,14 +672,12 @@ void renderizar_conteudo_do_relatorio(BlocoDocumento *head, char *destino, size_
         if (atual->tipo == BLOCO_TEXTO)
         {
             char texto_formatado[1100]; 
-
-            formatar_texto_alinhado(texto_formatado, sizeof(texto_formatado), atual->conteudo_texto, atual -> alinhamento);
-
-            usado += snprintf(destino + usado, tamanho_max - usado, "%s", texto_formatado);
+            formatar_texto_alinhado(texto_formatado, sizeof(texto_formatado), atual->conteudo_texto, atual->alinhamento);
+            ADD_TEXT("%s", texto_formatado);
         }
         else if (atual->tipo == 2)
         {
-            usado += snprintf(destino + usado, tamanho_max - usado, "--- %s ---\n", obter_titulo_fonte(atual->fonte_tabela));
+            ADD_TEXT("--- %s ---\n", obter_titulo_fonte(atual->fonte_tabela));
 
             const char *arq_fonte = obter_nome_fonte(atual->fonte_tabela);
             FILE *f_in = fopen(arq_fonte, "r");
@@ -790,10 +691,11 @@ void renderizar_conteudo_do_relatorio(BlocoDocumento *head, char *destino, size_
 
                     linha[strcspn(linha, "\r\n")] = '\0';
 
+                    char *resto = linha;
                     char *cols[6] = {NULL};
-                    cols[0] = strtok(linha, ";");
-                    for (int i = 1; i < 6; i++)
-                        cols[i] = strtok(NULL, ";");
+                    for (int i = 0; i < 6; i++) {
+                        cols[i] = extrair_campo(&resto);
+                    }
 
                     int pos = 0;
                     char linha_montada[512] = "";
@@ -802,23 +704,27 @@ void renderizar_conteudo_do_relatorio(BlocoDocumento *head, char *destino, size_
                     {
                         if (atual->colunas[i] && cols[i])
                         {
-                            pos += snprintf(linha_montada + pos, sizeof(linha_montada) - pos,
+                            int esc = snprintf(linha_montada + pos, sizeof(linha_montada) - pos,
                                             "%s%s", (pos == 0 ? "" : " | "), cols[i]);
+                            if (esc > 0) {
+                                pos += esc;
+                                if (pos >= sizeof(linha_montada)) pos = sizeof(linha_montada) - 1;
+                            }
                         }
                     }
                     if (pos > 0)
                     {
-                        usado += snprintf(destino + usado, tamanho_max - usado, "%s\n", linha_montada);
+                        ADD_TEXT("%s\n", linha_montada);
                     }
                 }
                 fclose(f_in);
             }
-            usado += snprintf(destino + usado, tamanho_max - usado, "\n");
+            ADD_TEXT("\n");
         }
         else if (atual->tipo == 3)
         {
             pagina_atual++;
-            usado += snprintf(destino + usado, tamanho_max - usado, "\n--- PÁGINA %d ---\n\n", pagina_atual);
+            ADD_TEXT("\n--- PÁGINA %d ---\n\n", pagina_atual);
         }
         if (usado >= tamanho_max - 1)
             break;
@@ -826,6 +732,7 @@ void renderizar_conteudo_do_relatorio(BlocoDocumento *head, char *destino, size_
     }
 }
 
+/*  Leitura Segura do Relatório */
 BlocoDocumento *carregar_relatorio(const char *caminho)
 {
     FILE *f = fopen(caminho, "r");
@@ -846,7 +753,22 @@ BlocoDocumento *carregar_relatorio(const char *caminho)
 
             sscanf(linha, "# BLOCO_INICIO|ID:%d|TIPO:%d", &novo->id, &novo->tipo);
 
-            if (novo->tipo == 2)
+            if (novo->tipo == BLOCO_TEXTO)
+            {
+                /* Lê o alinhamento salvo. Se o campo não existir (.meta antigo)
+                   ou vier inválido, cai para Esquerda. */
+                int alinha = ALINHA_ESQUERDA;
+                if (sscanf(linha, "# BLOCO_INICIO|ID:%*d|TIPO:%*d|ALINHA:%d", &alinha) == 1 &&
+                    alinha >= ALINHA_ESQUERDA && alinha <= ALINHA_DIREITA)
+                {
+                    novo->alinhamento = alinha;
+                }
+                else
+                {
+                    novo->alinhamento = ALINHA_ESQUERDA;
+                }
+            }
+            else if (novo->tipo == BLOCO_TABELA)
             {
                 sscanf(linha, "# BLOCO_INICIO|ID:%*d|TIPO:%*d|FONTE:%d|COLS:%d,%d,%d,%d,%d,%d",
                        &novo->fonte_tabela,
@@ -855,7 +777,7 @@ BlocoDocumento *carregar_relatorio(const char *caminho)
             }
 
             char sub_linha[512];
-            size_t usado = 0; // Nosso "odômetro" de memória
+            size_t usado = 0; 
 
             while (fgets(sub_linha, sizeof(sub_linha), f))
             {
@@ -865,7 +787,6 @@ BlocoDocumento *carregar_relatorio(const char *caminho)
                 if (novo->tipo == BLOCO_TEXTO) 
                 {
                     size_t len_novo = strlen(sub_linha);
-                    
                     
                     if (usado + len_novo < sizeof(novo->conteudo_texto) - 1) 
                     {
@@ -879,7 +800,6 @@ BlocoDocumento *carregar_relatorio(const char *caminho)
                     }
                 }
             }
-
 
             size_t len = strlen(novo->conteudo_texto);
             if (len > 0 && novo->conteudo_texto[len - 1] == '\n')
@@ -923,7 +843,6 @@ void exibir_blocos_menu(BlocoDocumento *head)
         }
         else if (atual->tipo == 2)
         {
-            // Formata os nomes das colunas selecionadas
             char str_colunas[256];
             formatar_colunas_ativas(atual->fonte_tabela, atual->colunas, str_colunas, sizeof(str_colunas));
 
@@ -959,7 +878,7 @@ void adicionar_novo_bloco_texto(BlocoDocumento **head)
     printf("1 - Esquerda\n2 - Centro\n3 - Direita\nOpcao: ");
     novo->alinhamento = ler_inteiro_seguro();
     
-    if (novo->alinhamento < 1 || novo->alinhamento > 3) novo -> alinhamento = 1;
+    if (novo->alinhamento < 1 || novo->alinhamento > 3) novo->alinhamento = 1;
 
     if (!*head)
     {
@@ -994,81 +913,74 @@ void adicionar_novo_bloco_tabela(BlocoDocumento **head)
     printf("5 - Presenças (presenca.txt)\n");
     printf("Escolha a fonte: ");
 
-    int opcao = 1;
-    if (scanf("%d", &opcao) != 1)
-        opcao = 1;
-    getchar();
+    novo->fonte_tabela = ler_inteiro_seguro();
 
-    novo->fonte_tabela = opcao;
-
-    // Garante que todas as posições começam em 0
     for (int i = 0; i < 6; i++)
         novo->colunas[i] = 0;
 
     printf("\n--- Escolha as colunas a incluir (1-Sim / 0-Não) ---\n");
 
-    if (opcao == 1)
+    if (novo->fonte_tabela == 1)
     {
         printf("ID_VEREADOR? ");
-        scanf("%d", &novo->colunas[0]);
+        novo->colunas[0] = ler_inteiro_seguro();
         printf("NOME? ");
-        scanf("%d", &novo->colunas[1]);
+        novo->colunas[1] = ler_inteiro_seguro();
         printf("PARTIDO? ");
-        scanf("%d", &novo->colunas[2]);
+        novo->colunas[2] = ler_inteiro_seguro();
         printf("EMAIL? ");
-        scanf("%d", &novo->colunas[3]);
+        novo->colunas[3] = ler_inteiro_seguro();
     }
-    else if (opcao == 2)
+    else if (novo->fonte_tabela == 2)
     {
         printf("ID_REUNIAO? ");
-        scanf("%d", &novo->colunas[0]);
+        novo->colunas[0] = ler_inteiro_seguro();
         printf("DATA_REUNIAO? ");
-        scanf("%d", &novo->colunas[1]);
+        novo->colunas[1] = ler_inteiro_seguro();
         printf("HORA? ");
-        scanf("%d", &novo->colunas[2]);
+        novo->colunas[2] = ler_inteiro_seguro();
         printf("PAUTA? ");
-        scanf("%d", &novo->colunas[3]);
+        novo->colunas[3] = ler_inteiro_seguro();
     }
-    else if (opcao == 3)
+    else if (novo->fonte_tabela == 3)
     {
         printf("ID_VOTACAO? ");
-        scanf("%d", &novo->colunas[0]);
+        novo->colunas[0] = ler_inteiro_seguro();
         printf("ID_PROJETO? ");
-        scanf("%d", &novo->colunas[1]);
+        novo->colunas[1] = ler_inteiro_seguro();
         printf("ID_REUNIAO? ");
-        scanf("%d", &novo->colunas[2]);
+        novo->colunas[2] = ler_inteiro_seguro();
         printf("ID_VEREADOR? ");
-        scanf("%d", &novo->colunas[3]);
+        novo->colunas[3] = ler_inteiro_seguro();
         printf("VOTO? ");
-        scanf("%d", &novo->colunas[4]);
+        novo->colunas[4] = ler_inteiro_seguro();
     }
-    else if (opcao == 4)
+    else if (novo->fonte_tabela == 4)
     {
         printf("ID_PROJ? ");
-        scanf("%d", &novo->colunas[0]);
+        novo->colunas[0] = ler_inteiro_seguro();
         printf("TITULO? ");
-        scanf("%d", &novo->colunas[1]);
+        novo->colunas[1] = ler_inteiro_seguro();
         printf("ID_AUTOR? ");
-        scanf("%d", &novo->colunas[2]);
+        novo->colunas[2] = ler_inteiro_seguro();
         printf("DATA_MOSTRA? ");
-        scanf("%d", &novo->colunas[3]);
+        novo->colunas[3] = ler_inteiro_seguro();
         printf("CATEGORIA? ");
-        scanf("%d", &novo->colunas[4]);
+        novo->colunas[4] = ler_inteiro_seguro();
         printf("STATUS? ");
-        scanf("%d", &novo->colunas[5]);
+        novo->colunas[5] = ler_inteiro_seguro();
     }
     else
     {
         printf("ID_PRESENCA? ");
-        scanf("%d", &novo->colunas[0]);
+        novo->colunas[0] = ler_inteiro_seguro();
         printf("ID_REUNIAO? ");
-        scanf("%d", &novo->colunas[1]);
+        novo->colunas[1] = ler_inteiro_seguro();
         printf("ID_VEREADOR? ");
-        scanf("%d", &novo->colunas[2]);
+        novo->colunas[2] = ler_inteiro_seguro();
         printf("STATUS_PRESENCA? ");
-        scanf("%d", &novo->colunas[3]);
+        novo->colunas[3] = ler_inteiro_seguro();
     }
-    getchar();
 
     if (!*head)
         *head = novo;
@@ -1114,19 +1026,20 @@ void salvar_estrutura_relatorio(const char *caminho_meta, BlocoDocumento *head)
     while (atual)
     {
         if (atual->tipo == 1)
-        { // Texto
-            fprintf(f, "# BLOCO_INICIO|ID:%d|TIPO:1\n%s\n# BLOCO_FIM\n\n",
-                    atual->id, atual->conteudo_texto);
+        { 
+            /* ALINHA grava o alinhamento (1-Esquerda, 2-Centro, 3-Direita) */
+            fprintf(f, "# BLOCO_INICIO|ID:%d|TIPO:1|ALINHA:%d\n%s\n# BLOCO_FIM\n\n",
+                    atual->id, atual->alinhamento, atual->conteudo_texto);
         }
         else if (atual->tipo == 2)
-        { // Tabela
+        { 
             fprintf(f, "# BLOCO_INICIO|ID:%d|TIPO:2|FONTE:%d|COLS:%d,%d,%d,%d,%d,%d\n# BLOCO_FIM\n\n",
                     atual->id, atual->fonte_tabela,
                     atual->colunas[0], atual->colunas[1], atual->colunas[2],
                     atual->colunas[3], atual->colunas[4], atual->colunas[5]);
         }
         else if (atual->tipo == 3)
-        { // Quebra de Página
+        { 
             fprintf(f, "# BLOCO_INICIO|ID:%d|TIPO:3\n# BLOCO_FIM\n\n", atual->id);
         }
         atual = atual->prox;
@@ -1139,35 +1052,35 @@ int obter_nomes_colunas_tabela(int fonte_tabela, const char *nomes_out[])
     switch (fonte_tabela)
     {
     case 1:
-    { // Vereadores
+    { 
         static const char *cols[] = {"ID_VEREADOR", "NOME", "PARTIDO", "EMAIL"};
         for (int i = 0; i < 4; i++)
             nomes_out[i] = cols[i];
         return 4;
     }
     case 2:
-    { // Reuniões
+    { 
         static const char *cols[] = {"ID_REUNIAO", "DATA_REUNIAO", "HORA", "PAUTA"};
         for (int i = 0; i < 4; i++)
             nomes_out[i] = cols[i];
         return 4;
     }
     case 3:
-    { // Votações
+    { 
         static const char *cols[] = {"ID_VOTACAO", "ID_PROJETO", "ID_REUNIAO", "ID_VEREADOR", "VOTO"};
         for (int i = 0; i < 5; i++)
             nomes_out[i] = cols[i];
         return 5;
     }
     case 4:
-    { // Projetos de Lei
+    { 
         static const char *cols[] = {"ID_PROJ", "TITULO", "ID_AUTOR", "DATA_MOSTRA", "CATEGORIA", "STATUS"};
         for (int i = 0; i < 6; i++)
             nomes_out[i] = cols[i];
         return 6;
     }
     case 5:
-    { // Presenças
+    { 
         static const char *cols[] = {"ID_PRESENCA", "ID_REUNIAO", "ID_VEREADOR", "STATUS_PRESENCA"};
         for (int i = 0; i < 4; i++)
             nomes_out[i] = cols[i];
@@ -1190,8 +1103,12 @@ void formatar_colunas_ativas(int fonte_tabela, const int colunas[6], char *desti
     {
         if (colunas[i])
         {
-            pos += snprintf(destino + pos, tam_max - pos, "%s%s",
+            int esc = snprintf(destino + pos, tam_max - pos, "%s%s",
                             (pos == 0 ? "" : ", "), nomes[i]);
+            if (esc > 0) {
+                pos += esc;
+                if (pos >= tam_max) pos = tam_max - 1;
+            }
         }
     }
     if (pos == 0)
@@ -1218,6 +1135,7 @@ void formatar_cabecalho(
              "======================================================================\n\n",
              municipio, sessao, tipo_sessao, data);
 }
+
 void coletar_dados_cabecalho(
     char *municipio, size_t tam_mun,
     char *data, size_t tam_data,
@@ -1240,12 +1158,10 @@ void coletar_dados_cabecalho(
     tipo_sessao[strcspn(tipo_sessao, "\r\n")] = '\0';
 
     printf("Número da Sessão: ");
-    if (scanf("%d", sessao) != 1)
-        *sessao = 1;
-    getchar();
+    *sessao = ler_inteiro_seguro();
 }
 
-/* rodape */
+/* rodapé */
 
 void formatar_rodape(char *destino, size_t tamanho)
 {
@@ -1257,29 +1173,28 @@ void formatar_rodape(char *destino, size_t tamanho)
              "==================================================\n");
 }
 
-/* impressao do formulario */
-
+/*Otimização do Motor de I/O (Abertura Única) */
 int imprimir_formulario_txt(const char *arquivo, const char *cabecalho, const char *conteudo, const char *rodape)
 {
-    FILE *f = fopen(arquivo, "w"); // Limpa o arquivo para regravar do zero
+    FILE *f = fopen(arquivo, "w");
     if (!f)
     {
-        printf("[ERRO] Não foi possível criar/abrir o arquivo '%s'.\n", arquivo);
+        printf("[ERRO] Não foi possível criar o arquivo '%s'.\n", arquivo);
         return 0;
     }
-    fclose(f);
 
     if (cabecalho)
-        escrever(arquivo, cabecalho);
+        fputs(cabecalho, f);
     if (conteudo)
-        escrever(arquivo, conteudo);
+        fputs(conteudo, f);
     if (rodape)
-        escrever(arquivo, rodape);
+        fputs(rodape, f);
 
+    fclose(f);
     return 1;
 }
 
-/* leitura e alteração*/
+/* leitura e alteração */
 
 int editar_formulario_txt(const char *arquivo)
 {
@@ -1300,10 +1215,7 @@ int editar_formulario_txt(const char *arquivo)
 
     printf("\n--------------------------------------------------\n");
     printf("Deseja anexar uma observação ao formulário? (1 - Sim / 0 - Não): ");
-    int opcao = 0;
-    if (scanf("%d", &opcao) != 1)
-        opcao = 0;
-    getchar();
+    int opcao = ler_inteiro_seguro();
 
     if (opcao == 1)
     {
@@ -1322,7 +1234,7 @@ int editar_formulario_txt(const char *arquivo)
     return 1;
 }
 
-/* menu */
+/* menu principal de blocos */
 
 void editar_documento_por_blocos(const char *caminho_relatorio_txt)
 {
@@ -1391,7 +1303,6 @@ void editar_documento_por_blocos(const char *caminho_relatorio_txt)
             limpar_tela();
             salvar_estrutura_relatorio(caminho_meta, head);
 
-            // Pergunta as informações apenas uma vez ao gerar
             if (!cabecalho_configurado)
             {
                 coletar_dados_cabecalho(mun, sizeof(mun), dt, sizeof(dt),
@@ -1399,7 +1310,6 @@ void editar_documento_por_blocos(const char *caminho_relatorio_txt)
                 cabecalho_configurado = 1;
             }
 
-            // Monta o cabeçalho com os dados reais informados
             formatar_cabecalho(cabecalho, sizeof(cabecalho), mun, dt, num_sessao, tipo_sessao);
             renderizar_conteudo_do_relatorio(head, conteudo, sizeof(conteudo));
             formatar_rodape(rodape, sizeof(rodape));
@@ -1428,23 +1338,26 @@ int main()
 {
     srand((unsigned int)time(NULL));
 
-    // Criação das listas dinamicas
+    // Criação das listas dinâmicas
     Vereador *v = carregar_vereadores("OsCapaPreta.txt");
     Reuniao *r = carregar_reunioes("reunioes.txt");
     Projeto *p = carregar_projetos("projetos.txt");
     Presenca *pres = carregar_presencas("presenca.txt");
     Votacao *vot = carregar_votacoes("votacao.txt");
 
-    // Endereço do relatorio
+    //(Geração Otimizada de Votações via Matriz Dinâmica)
+    gerar_votacoes_completas_otimizada("saida_votacoes_otimizada.txt", r, p, v, pres);
+
+    // Endereço do relatório
     const char *arquivo = "relatorio.txt";
 
-    // Usuario vai poder adicionar "bloco a bloco",
+    // Adição bloco a bloco de relatórios
     editar_documento_por_blocos(arquivo);
 
-    // aq ele poe no formulario e ve se precisa editar algo
+    // Visualização e anexo de observações
     editar_formulario_txt(arquivo);
 
-    // NÃO ESQUEÇAM DE LIBERAR MEMORIA, IMPORTANTE MANTER (É O FREE GERAL)
+    // Liberação da memória
     liberar_vereadores(v);
     liberar_reunioes(r);
     liberar_projetos(p);
