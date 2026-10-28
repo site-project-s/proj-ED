@@ -1,10 +1,20 @@
-608;PL Documentalizacao de Educacao de Violencia;5237;12/08/2026;Meio Ambiente;Rejeitado
-412;PL Padronizacao de Educacao de Polica;2657;09/09/2026;Migueh;Rejeitado
-116;PL Memificacao de Patriotismo de Gastronomia;2657;13/12/2026;Financas;Arquivado
-385;PL Proibicao de Educacao de Representacao;5160;12/07/2026;Migueh;Em Tramitacao
-389;PL Proibicao de Seguranca de Patriotismo;2657;23/04/2026;Meio Ambiente;Arquivado
-530;PL Oficializacao de Saude de Violencia;5006;03/09/2026;Inutil;Arquivado
-419;PL Documentalizacao de Cambio de Criptomoedas;5160;25/01/2026;Meio Ambiente;Rejeitado
-368;PL Ementa de Panificacao de Residuos;7889;12/06/2026;Educacao;Em Tramitacao
-578;PL Fomento de Cultura de Polica;2657;22/04/2026;Meio Ambiente;Rejeitado
-873;PL Nacionalizacao de Criptomoedas de Criptomoedas;7342;14/08/2026;Educacao;Rejeitado
+827;PL Informe de Patriotismo de Seguranca;3686;24/09/2026;Inutil;Aprovado
+161;PL Institucionalizacao de Criptomoedas de Seguranca;1668;02/04/2026;Meio Ambiente;Arquivado
+426;PL Consideracao de Gastronomia de Cultura;7762;26/08/2026;Migueh;Em Tramitacao
+206;PL Documentalizacao de Educacao de Violencia;3686;18/09/2026;Infraestrutura;Aprovado
+672;PL Documentalizacao de CyberSeguranca de Gastronomia;1538;09/03/2026;Seguranca;Em Tramitacao
+437;PL Precarizacao de Seguranca de Gastronomia;6517;17/07/2026;Migueh;Aprovado
+548;PL Precarizacao de Cambio de Cultura;2627;27/09/2026;Saude;Aprovado
+418;PL Proibicao de Criptomoedas de Cambio;5193;16/06/2026;Greve;Arquivado
+303;PL Consideracao de Residuos de Panificacao;6517;28/01/2026;Seguranca;Aprovado
+667;PL Fomento de Panificacao de Educacao;8044;17/04/2026;Educacao;Aprovado
+470;PL Clusteriacao de Seguranca de Gastronomia;7811;01/09/2026;Greve;Em Tramitacao
+198;PL Clusteriacao de Polica de CyberSeguranca;6082;05/08/2026;Educacao;Em Tramitacao
+203;PL Informe de Criptomoedas de Polica;2822;15/02/2026;Meio Ambiente;Arquivado
+892;PL Ementa de Cambio de Patriotismo;8012;25/11/2026;Trapaceio;Aprovado
+406;PL Nacionalizacao de Representacao de Gastronomia;2967;28/03/2026;Trapaceio;Em Tramitacao
+489;PL Documentalizacao de Residuos de Patriotismo;8012;04/10/2026;Greve;Aprovado
+256;PL Proibicao de Patriotismo de Polica;7762;14/01/2026;Educacao;Arquivado
+856;PL Proibicao de Seguranca de Violencia;6517;17/03/2026;Financas;Aprovado
+505;PL Oficializacao de Saude de Gastronomia;8012;27/04/2026;Financas;Rejeitado
+865;PL Perdao de Seguranca de Educacao;6082;24/03/2026;Inutil;Aprovado
