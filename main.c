@@ -1,49 +1,3 @@
-/* =====================================================================
-   main.c - Sistema da Camara: base de dados + editor de relatorio por blocos
-
-   O QUE FAZ
-     1) BASE DE DADOS: 5 arquivos .txt (vereadores, reunioes, projetos,
-        presencas, votacoes), lidos para LISTAS ENCADEADAS. O menu inicial
-        gera dados aleatorios e apaga dados da base.
-     2) EDITOR DE RELATORIO: o usuario junta BLOCOS (texto, tabela, quebra
-        de pagina) numa LISTA ENCADEADA (BlocoDocumento). O programa quebra
-        as linhas, alinha, desenha tabelas em caixa, pagina e grava
-        NOME.txt. A estrutura vai em NOME.meta, para editar depois.
-     Veja PLANO_PAGINACAO.md e GUIA_APRESENTACAO.md.
-
-   COMPILAR / RODAR
-     gcc -Wall -Wextra -o main main.c        (rodar na pasta dos .txt)
-     O arquivo e UTF-8; no Windows o console e trocado para UTF-8 no main().
-
-   MAPA DO ARQUIVO (cada parte usa so as anteriores)
-     1  Limites e tipos        constantes, listas encadeadas, Cabecalho, Render
-     2  Dados de apoio         listas de nomes/temas e funcoes basicas de arquivo
-     3  Medidas UTF-8          largura VISIVEL (nao bytes)
-     4  Paginacao              emitir_linha / quebrar_pagina
-     5  Quebra de linha        emitir_paragrafo (+ alinhamento)
-     6  Cabecalho e rodape
-     7  Tabela em caixa
-     8  Renderizacao           junta tudo: renderizar() percorre a lista de blocos
-     9  Leitura da base        carregar_* / liberar_* (listas encadeadas)
-     10 Console                avisos, limpar tela, leitura segura
-     11 Nomes de arquivo       sanear_nome
-     12 Acoes sobre blocos     adicionar, inserir quebra, remover, editar
-     13 Arquivo .meta          salvar_meta / carregar_meta / autosalvar
-     14 Salvar e abrir         salvar_documento / abrir_documento
-     15 Menu do editor         editar_documento
-     16 Base de dados          gerar dados aleatorios / apagar
-     17 main                   menu inicial
-
-   IDEIAS-CHAVE (para explicar)
-     - Tudo que vai para a tela/arquivo passa por emitir_linha(): ela e
-       o UNICO lugar que conta linhas e troca de pagina.
-     - O mesmo codigo que imprime tambem CONTA: com Render.out == NULL
-       nada e escrito, so se mede (usado para validar o tamanho do texto).
-     - Tamanhos sempre em caracteres visiveis, nunca strlen (acentos).
-     - Toda alteracao e gravada na hora (autosave) em rascunho.meta ou
-       NOME.meta: se o programa fechar, nada se perde.
-   ===================================================================== */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,31 +10,23 @@
 #include <windows.h>
 #endif
 
-/* ===== 1. LIMITES E TIPOS (unico lugar para ajustar o layout) ===== */
-#define LARGURA_LINHA 70    /* colunas VISIVEIS por linha */
+#define LARGURA_LINHA 70
 #define LINHAS_POR_PAGINA 24
 
-#define LINHAS_CABECALHO 6  /* quantas linhas emitir_cabecalho() usa */
-#define LINHAS_RODAPE 6     /* quantas linhas emitir_rodape() usa */
+#define LINHAS_CABECALHO 6
+#define LINHAS_RODAPE 6
 
-/* Uma caixa de texto nunca pode ser maior que uma pagina:
-   - no maximo LINHAS_POR_PAGINA linhas ja contando a linha em branco final
-   - e no maximo TAM_TEXTO caracteres visiveis */
 #define TAM_TEXTO (LARGURA_LINHA * (LINHAS_POR_PAGINA - 1))
-#define TAM_BUF_TEXTO (TAM_TEXTO * 2 + 1) /* bytes: acentos UTF-8 ocupam 2 */
-#define LINHA_BUF (LARGURA_LINHA * 4 + 16) /* uma linha impressa, em bytes */
+#define TAM_BUF_TEXTO (TAM_TEXTO * 2 + 1)
+#define LINHA_BUF (LARGURA_LINHA * 4 + 16)
 
 #define MAX_COLS 6
 #define TAM_CEL 128
-#define LARG_MIN_COL 6 /* menor largura para a qual uma coluna encolhe */
+#define LARG_MIN_COL 6
 
-/* uma tabela so comeca numa pagina se couber: titulo + borda + cabecalho +
-   separador + 1 linha de dados + borda final */
 #define LINHAS_MIN_TABELA 6
-#define PREVIA_TEXTO 35 /* caracteres do texto mostrados na lista de blocos */
+#define PREVIA_TEXTO 35
 
-/* Fonte = um arquivo de dados (.txt com campos separados por ';') que uma
-   tabela pode mostrar. O bloco de tabela guarda so o numero da fonte. */
 typedef struct
 {
     const char *titulo;
@@ -98,14 +44,11 @@ static const Fonte FONTES[] = {
 };
 #define N_FONTES 5
 
-/* indices (0..4) de cada fonte em FONTES[] */
 #define IDX_VER 0
 #define IDX_REU 1
 #define IDX_VOT 2
 #define IDX_PROJ 3
 #define IDX_PRES 4
-
-/* ---- registros da base: uma LISTA ENCADEADA para cada arquivo ---- */
 
 typedef struct Vereador
 {
@@ -155,9 +98,6 @@ typedef struct Votacao
     struct Votacao *prox;
 } Votacao;
 
-/* ---- blocos do documento: LISTA ENCADEADA ---- */
-
-/* tipos de bloco e de alinhamento (os numeros tambem vao para o .meta) */
 enum TipoBloco
 {
     BLOCO_TEXTO = 1,
@@ -172,10 +112,6 @@ enum Alinhamento
     ALINHA_DIREITA = 3
 };
 
-/* Um no da lista = um pedaco do documento. Campos usados por tipo:
-   BLOCO_TEXTO  -> conteudo_texto, alinhamento
-   BLOCO_TABELA -> fonte_tabela (1..5, indice em FONTES[]), colunas (1 = mostrar)
-   BLOCO_QUEBRA -> nenhum */
 typedef struct BlocoDocumento
 {
     int id;
@@ -187,39 +123,32 @@ typedef struct BlocoDocumento
     struct BlocoDocumento *prox;
 } BlocoDocumento;
 
-/* dados da faixa de cima do relatorio */
 typedef struct
 {
     char municipio[60];
     char data[12];
     char tipo[30];
     int sessao;
-    int configurado; /* 0 = valores padrao, usuario ainda nao preencheu */
+    int configurado;
 } Cabecalho;
 
-/* "caneta" da renderizacao: onde escrever e em que ponto da pagina estamos */
 typedef struct
 {
-    FILE *out; /* NULL = modo contagem: so conta linhas, nao imprime */
+    FILE *out;
     int pagina;
-    int linhas; /* linhas ja usadas na pagina atual */
+    int linhas;
 } Render;
 
 #define NOME_MAX 48
-#define RASCUNHO "rascunho" /* nome do arquivo enquanto o documento nao tem nome */
+#define RASCUNHO "rascunho"
 
-/* tudo que pertence a um documento aberto */
 typedef struct
 {
-    BlocoDocumento *head; /* primeiro bloco da lista (NULL = documento vazio) */
-    int nb;               /* quantos blocos a lista tem */
+    BlocoDocumento *head;
+    int nb;
     Cabecalho cab;
-    char nome[NOME_MAX]; /* vazio = ainda sem nome (grava em rascunho.meta) */
+    char nome[NOME_MAX];
 } Doc;
-
-/* ===== 2. DADOS DE APOIO ===== */
-
-/* listas */
 
 const char *NOMES_BASE[] = {
     "Arthur", "Oliveira", "Patriota",
@@ -305,7 +234,6 @@ const char *VOTOS[] = {
     "Abstencao"};
 const int TOTAL_VOTOS = sizeof(VOTOS) / sizeof(VOTOS[0]);
 
-
 void copiar_string(char *pra_ca, const char *daqui, size_t tamanho_max)
 {
     if (!pra_ca || !daqui || tamanho_max == 0)
@@ -313,59 +241,6 @@ void copiar_string(char *pra_ca, const char *daqui, size_t tamanho_max)
     strncpy(pra_ca, daqui, tamanho_max - 1);
     pra_ca[tamanho_max - 1] = '\0';
 }
-
-
-void escrever(const char *caminho, const char *texto)
-{
-    if (!caminho || !texto)
-        return;
-    FILE *f = fopen(caminho, "a");
-    if (!f)
-        return;
-    fputs(texto, f);
-    fclose(f);
-}
-
-int obter_maior_id(const char *caminho)
-{
-    FILE *f = fopen(caminho, "r");
-    if (!f)
-        return 1000;
-
-    int maior = 0;
-    char linha[256];
-    while (fgets(linha, sizeof(linha), f))
-    {
-        if (linha[0] == '#' || linha[0] == '\n' || linha[0] == '\r')
-            continue;
-        int id = atoi(linha);
-        if (id > maior)
-            maior = id;
-    }
-    fclose(f);
-    return (maior > 0) ? maior : 1000;
-}
-
-int carregar_todos_ids(const char *caminho, int ids[], int max_ids)
-{
-    FILE *f = fopen(caminho, "r");
-    if (!f)
-        return 0;
-
-    int qtd = 0;
-    char linha[256];
-    while (fgets(linha, sizeof(linha), f) && qtd < max_ids)
-    {
-        if (linha[0] == '#' || linha[0] == '\n' || linha[0] == '\r')
-            continue;
-        int id = atoi(linha);
-        if (id > 0)
-            ids[qtd++] = id;
-    }
-    fclose(f);
-    return qtd;
-}
-
 
 void sortear_tema_complexo(char *destino, size_t tam_max, const char *prefixo)
 {
@@ -383,32 +258,22 @@ void sortear_tema_complexo(char *destino, size_t tam_max, const char *prefixo)
     }
 }
 
-
-/* carregamento de dados*/
-
 char* extrair_campo(char **resto_da_linha) {
-    if (*resto_da_linha == NULL) return ""; 
-    
+    if (*resto_da_linha == NULL) return "";
+
     char *inicio = *resto_da_linha;
-    char *ponto_virgula = strchr(inicio, ';'); 
-    
+    char *ponto_virgula = strchr(inicio, ';');
+
     if (ponto_virgula != NULL) {
-        *ponto_virgula = '\0'; 
-        *resto_da_linha = ponto_virgula + 1; 
+        *ponto_virgula = '\0';
+        *resto_da_linha = ponto_virgula + 1;
     } else {
-        *resto_da_linha = NULL; 
+        *resto_da_linha = NULL;
     }
-    
+
     return inicio;
 }
 
-
-
-/* ===== 3. MEDIDAS EM CARACTERES VISIVEIS (UTF-8) =====
-   strlen() conta bytes: "ã" valeria 2 e desalinharia tudo. Aqui conta-se
-   so os bytes que iniciam um caractere (os de continuacao sao 10xxxxxx). */
-
-/* largura visivel dos primeiros nbytes bytes de s */
 static int larg_visual_n(const char *s, int nbytes)
 {
     int n = 0;
@@ -423,7 +288,6 @@ static int larg_visual(const char *s)
     return larg_visual_n(s, (int)strlen(s));
 }
 
-/* quantos bytes ocupam os primeiros nchars caracteres de s */
 static int bytes_ate(const char *s, int nchars)
 {
     int i = 0, n = 0;
@@ -440,24 +304,17 @@ static int bytes_ate(const char *s, int nchars)
     return i;
 }
 
-/* trunca s para no maximo max_chars caracteres visiveis (sem partir um acento) */
 static void cortar_visual(char *s, int max_chars)
 {
     s[bytes_ate(s, max_chars)] = '\0';
 }
 
-/* ===== 4. PAGINACAO =====
-   Regra unica: a pagina tem LINHAS_POR_PAGINA linhas. Quando enche, a
-   proxima linha abre uma pagina nova (quebrar_pagina). */
-
-/* escreve sem checar limite (so para fechar tabela antes de quebrar) */
 static void linha_crua(Render *r, const char *s)
 {
     fprintf(r->out, "%s\n", s);
     r->linhas++;
 }
 
-/* escreve a linha "---- fim da pagina N [motivo] ----" e zera o contador */
 static void quebrar_pagina(Render *r, const char *motivo)
 {
     char rot[64], marca[LINHA_BUF];
@@ -476,11 +333,9 @@ static void quebrar_pagina(Render *r, const char *motivo)
     r->linhas = 0;
 }
 
-/* toda linha normal passa por aqui: quebra a pagina sozinha no limite.
-   Linha em branco nunca fica sozinha no topo nem forca uma quebra. */
 static void emitir_linha(Render *r, const char *s)
 {
-    if (!r->out) /* modo contagem */
+    if (!r->out)
     {
         r->linhas++;
         return;
@@ -495,9 +350,6 @@ static void emitir_linha(Render *r, const char *s)
     linha_crua(r, s);
 }
 
-/* ===== 5. QUEBRA DE LINHA + ALINHAMENTO ===== */
-
-/* uma linha ja quebrada, com espacos a esquerda conforme o alinhamento */
 static void emitir_alinhado(Render *r, const char *s, int alinha)
 {
     char buf[LINHA_BUF + LARGURA_LINHA];
@@ -513,10 +365,6 @@ static void emitir_alinhado(Render *r, const char *s, int alinha)
     emitir_linha(r, buf);
 }
 
-/* Quebra o texto em linhas de ate LARGURA_LINHA caracteres, SEM partir
-   palavras (a palavra que nao cabe vai inteira para a proxima linha; so
-   uma palavra maior que a linha toda e cortada). O alinhamento e aplicado
-   DEPOIS de quebrar, linha a linha. Termina com uma linha em branco. */
 static void emitir_paragrafo(Render *r, const char *texto, int alinha)
 {
     char linha[LINHA_BUF] = "";
@@ -535,7 +383,7 @@ static void emitir_paragrafo(Render *r, const char *texto, int alinha)
         int tam_b = (int)(p - ini);
         int tam_v = larg_visual_n(ini, tam_b);
 
-        while (tam_v > LARGURA_LINHA) /* palavra maior que a linha: corta */
+        while (tam_v > LARGURA_LINHA)
         {
             if (len_v > 0)
             {
@@ -571,12 +419,9 @@ static void emitir_paragrafo(Render *r, const char *texto, int alinha)
     }
     if (len_v > 0)
         emitir_alinhado(r, linha, alinha);
-    emitir_linha(r, ""); /* linha em branco entre paragrafos */
+    emitir_linha(r, "");
 }
 
-/* ===== 6. CABECALHO E RODAPE (mesma largura do resto) ===== */
-
-/* linha de LARGURA_LINHA repeticoes de c (ex.: "=====") */
 static void emitir_barra(Render *r, char c)
 {
     char b[LARGURA_LINHA + 1];
@@ -585,7 +430,6 @@ static void emitir_barra(Render *r, char c)
     emitir_linha(r, b);
 }
 
-/* printf de uma linha so, cortada em LARGURA_LINHA para nunca estourar */
 static void emitir_texto_curto(Render *r, const char *fmt, ...)
 {
     char buf[LINHA_BUF];
@@ -607,11 +451,9 @@ static void emitir_cabecalho(Render *r, const Cabecalho *c)
     emitir_linha(r, "");
 }
 
-/* o rodape e sempre a ultima coisa; se nao couber inteiro, vai para uma
-   pagina nova (nunca fica dividido) */
 static void emitir_rodape(Render *r)
 {
-    if (r->linhas + LINHAS_RODAPE > LINHAS_POR_PAGINA) /* rodape inteiro na mesma pagina */
+    if (r->linhas + LINHAS_RODAPE > LINHAS_POR_PAGINA)
         quebrar_pagina(r, "automática");
 
     char data[16];
@@ -626,21 +468,15 @@ static void emitir_rodape(Render *r)
     emitir_barra(r, '=');
 }
 
-/* ===== 7. TABELA EM CAIXA =====
-   Passos de emitir_tabela(): ler o arquivo -> calcular larguras das colunas
-   -> desenhar, repetindo o cabecalho quando a tabela muda de pagina. */
+typedef char Linha[MAX_COLS][TAM_CEL];
 
-typedef char Linha[MAX_COLS][TAM_CEL]; /* um registro do arquivo: ate MAX_COLS campos */
-
-/* quais colunas aparecem e com que largura (em caracteres visiveis) */
 typedef struct
 {
-    int n;                /* colunas ativas */
-    int idx[MAX_COLS];    /* idx[i] = coluna do arquivo que e a i-esima da tabela */
+    int n;
+    int idx[MAX_COLS];
     int larg[MAX_COLS];
 } Layout;
 
-/* "+----+----+" (c = '-') ou "+====+====+" (c = '=', separa o cabecalho) */
 static void montar_borda(const Layout *L, char c, char *dest)
 {
     int pos = 0;
@@ -654,7 +490,6 @@ static void montar_borda(const Layout *L, char c, char *dest)
     dest[pos] = '\0';
 }
 
-/* escreve a celula com exatamente w colunas visiveis (preenche ou corta com "...") */
 static int escrever_celula(char *dest, const char *t, int w)
 {
     int pos = 0, lv = larg_visual(t);
@@ -683,7 +518,6 @@ static int escrever_celula(char *dest, const char *t, int w)
     return pos;
 }
 
-/* "| a | b |" com cada celula ajustada a sua largura */
 static void montar_linha_dados(const Layout *L, char cel[][TAM_CEL], char *dest)
 {
     int pos = 0;
@@ -698,9 +532,6 @@ static void montar_linha_dados(const Layout *L, char cel[][TAM_CEL], char *dest)
     dest[pos] = '\0';
 }
 
-/* le o arquivo ';' para um vetor alocado dinamicamente (cresce com realloc:
-   sem limite fixo de linhas). Ignora linhas vazias e comentarios '#'.
-   Devolve o numero de linhas, ou -1 se nao abriu. O chamador faz free(*out). */
 static int ler_arquivo(const char *caminho, Linha **out)
 {
     FILE *f = fopen(caminho, "r");
@@ -723,7 +554,7 @@ static int ler_arquivo(const char *caminho, Linha **out)
             cap *= 2;
         }
         char *resto = linha;
-        for (int c = 0; c < MAX_COLS; c++) /* mesma funcao que os carregar_* usam */
+        for (int c = 0; c < MAX_COLS; c++)
             snprintf(dados[n][c], TAM_CEL, "%s", extrair_campo(&resto));
         n++;
     }
@@ -734,10 +565,6 @@ static int ler_arquivo(const char *caminho, Linha **out)
     return n;
 }
 
-/* Larguras: comeca pela maior celula de cada coluna ativa (cabecalho
-   incluso). Se a tabela passar de LARGURA_LINHA, tira 1 caractere por vez
-   da coluna mais larga, ate caber (ou chegar em LARG_MIN_COL). O texto
-   que sobra e cortado com "..." por escrever_celula(). */
 static Layout calcular_layout(const BlocoDocumento *b, Linha *dados, int n)
 {
     const Fonte *F = &FONTES[b->fonte_tabela - 1];
@@ -758,7 +585,7 @@ static Layout calcular_layout(const BlocoDocumento *b, Linha *dados, int n)
 
     for (;;)
     {
-        int total = 1; /* '|' inicial + (espaco + dado + espaco + '|') por coluna */
+        int total = 1;
         for (int i = 0; i < L.n; i++)
             total += L.larg[i] + 3;
         if (total <= LARGURA_LINHA)
@@ -768,15 +595,12 @@ static Layout calcular_layout(const BlocoDocumento *b, Linha *dados, int n)
             if (L.larg[i] > L.larg[maior])
                 maior = i;
         if (L.larg[maior] <= LARG_MIN_COL)
-            break; /* nao da para encolher mais */
+            break;
         L.larg[maior]--;
     }
     return L;
 }
 
-/* titulo + borda + cabecalho + separador. continuacao=1 muda o titulo.
-   E chamada no inicio da tabela E em cada nova pagina: por isso o
-   cabecalho se repete. */
 static void emitir_topo_tabela(Render *r, const BlocoDocumento *b, const char *borda,
                                const char *cab, const char *sep, int continuacao)
 {
@@ -807,20 +631,18 @@ static void emitir_tabela(Render *r, const BlocoDocumento *b)
         snprintf(nomes[c], TAM_CEL, "%s", F->nomes[c]);
     montar_linha_dados(&L, nomes, cab);
 
-    /* nunca deixa so o cabecalho no fim da pagina: se nao cabem pelo menos
-       LINHAS_MIN_TABELA linhas, a tabela inteira comeca na proxima */
     if (r->linhas + LINHAS_MIN_TABELA > LINHAS_POR_PAGINA)
         quebrar_pagina(r, "automática");
     emitir_topo_tabela(r, b, borda, cab, sep, 0);
 
     for (int i = 0; i < n; i++)
     {
-        /* precisa sobrar espaco para a linha + a borda de fechamento */
+
         if (r->linhas + 2 > LINHAS_POR_PAGINA)
         {
-            linha_crua(r, borda); /* fecha a caixa nesta pagina */
+            linha_crua(r, borda);
             quebrar_pagina(r, "automática");
-            emitir_topo_tabela(r, b, borda, cab, sep, 1); /* REPETE o cabecalho */
+            emitir_topo_tabela(r, b, borda, cab, sep, 1);
         }
         montar_linha_dados(&L, dados[i], lin);
         emitir_linha(r, lin);
@@ -830,11 +652,6 @@ static void emitir_tabela(Render *r, const BlocoDocumento *b)
     free(dados);
 }
 
-/* ===== 8. RENDERIZACAO =====
-   Percorre os blocos na ordem e chama o emissor de cada tipo. E a mesma
-   funcao para tela, arquivo .txt e pre-visualizacao. */
-
-/* marcas=1 escreve "[B n]" antes de cada bloco (pre-visualizacao) */
 static void renderizar(FILE *out, const BlocoDocumento *head, int marcas, const Cabecalho *cab)
 {
     Render r = {out, 1, 0};
@@ -844,7 +661,7 @@ static void renderizar(FILE *out, const BlocoDocumento *head, int marcas, const 
     {
         if (b->tipo == BLOCO_QUEBRA)
         {
-            if (r.linhas > 0) /* nao gera pagina em branco se ja acabou de quebrar */
+            if (r.linhas > 0)
                 quebrar_pagina(&r, "manual");
             continue;
         }
@@ -857,8 +674,6 @@ static void renderizar(FILE *out, const BlocoDocumento *head, int marcas, const 
     }
     emitir_rodape(&r);
 }
-
-/* ===== 9. LEITURA DA BASE (listas encadeadas) ===== */
 
 Vereador *carregar_vereadores(const char *caminho)
 {
@@ -877,7 +692,7 @@ Vereador *carregar_vereadores(const char *caminho)
         if (!novo) continue;
         memset(novo, 0, sizeof(Vereador));
 
-        char *resto = linha; 
+        char *resto = linha;
 
         char *token = extrair_campo(&resto);
         novo->id_vereador = atoi(token);
@@ -901,7 +716,7 @@ Vereador *carregar_vereadores(const char *caminho)
     }
     fclose(f);
     return head;
-} 
+}
 Reuniao *carregar_reunioes(const char *caminho)
 {
     FILE *f = fopen(caminho, "r");
@@ -919,7 +734,7 @@ Reuniao *carregar_reunioes(const char *caminho)
         if (!novo) continue;
         memset(novo, 0, sizeof(Reuniao));
 
-        char *resto = linha; 
+        char *resto = linha;
 
         char *token = extrair_campo(&resto);
         novo->id_reuniao = atoi(token);
@@ -927,7 +742,7 @@ Reuniao *carregar_reunioes(const char *caminho)
         token = extrair_campo(&resto);
         copiar_string(novo->data_reuniao, token, sizeof(novo->data_reuniao));
 
-        token = extrair_campo(&resto); /* faltava ler a hora: a pauta recebia "16:00" */
+        token = extrair_campo(&resto);
         copiar_string(novo->hora, token, sizeof(novo->hora));
 
         token = extrair_campo(&resto);
@@ -944,7 +759,6 @@ Reuniao *carregar_reunioes(const char *caminho)
     fclose(f);
     return head;
 }
-
 
 Projeto *carregar_projetos(const char *caminho)
 {
@@ -963,7 +777,7 @@ Projeto *carregar_projetos(const char *caminho)
         if (!novo) continue;
         memset(novo, 0, sizeof(Projeto));
 
-        char *resto = linha; 
+        char *resto = linha;
 
         char *token = extrair_campo(&resto);
         novo->id_proj = atoi(token);
@@ -971,7 +785,6 @@ Projeto *carregar_projetos(const char *caminho)
         token = extrair_campo(&resto);
         copiar_string(novo->titulo, token, sizeof(novo->titulo));
 
-        /* faltavam autor, data e categoria: o "status" recebia o ID do autor */
         token = extrair_campo(&resto);
         novo->id_autor = atoi(token);
 
@@ -1013,9 +826,9 @@ Presenca *carregar_presencas(const char *caminho)
         if (!novo) continue;
         memset(novo, 0, sizeof(Presenca));
 
-        char *resto = linha; 
+        char *resto = linha;
 
-        char *token = extrair_campo(&resto); /* faltava o ID da presenca: tudo ficava deslocado */
+        char *token = extrair_campo(&resto);
         novo->id_presenca = atoi(token);
 
         token = extrair_campo(&resto);
@@ -1055,7 +868,7 @@ Votacao *carregar_votacoes(const char *caminho)
         if (!novo) continue;
         memset(novo, 0, sizeof(Votacao));
 
-        char *resto = linha; 
+        char *resto = linha;
 
         char *token = extrair_campo(&resto);
         novo->id_votacao = atoi(token);
@@ -1083,8 +896,6 @@ Votacao *carregar_votacoes(const char *caminho)
     fclose(f);
     return head;
 }
-
-/* liberação de memória*/
 
 void liberar_vereadores(Vereador *head)
 {
@@ -1141,12 +952,8 @@ void liberar_blocos(BlocoDocumento *head)
     }
 }
 
-/* ===== 10. CONSOLE: avisos, tela e leitura segura ===== */
-
-/* mensagens que precisam sobreviver ao "apagar tela": aparecem acima do menu */
 static char g_aviso[800];
 
-/* guarda a mensagem (printf) para o proximo mostrar_aviso() */
 static void aviso(const char *fmt, ...)
 {
     char tmp[300];
@@ -1159,7 +966,6 @@ static void aviso(const char *fmt, ...)
     strncat(g_aviso, tmp, sizeof(g_aviso) - strlen(g_aviso) - 1);
 }
 
-/* imprime e esvazia as mensagens guardadas */
 static void mostrar_aviso(void)
 {
     if (g_aviso[0])
@@ -1178,7 +984,6 @@ static void limpar_tela(void)
 #endif
 }
 
-/* se o usuario digitou mais que o buffer, joga fora o resto da linha */
 static void descartar_resto_da_linha(void)
 {
     int c;
@@ -1194,18 +999,15 @@ static void pausar(const char *msg)
         descartar_resto_da_linha();
 }
 
-static int g_eof; /* 1 quando a entrada acabou (Ctrl+Z / Ctrl+D): os menus encerram */
+static int g_eof;
 
-/* le um numero de uma linha. Devolve -1 se nao for numero (cai em "opcao
-   invalida" nos menus) e 0 no fim da entrada (g_eof), que os menus tratam
-   como "sair" para nao ficarem presos em laco infinito. */
 static int ler_int(void)
 {
     char buf[64];
     if (!fgets(buf, sizeof(buf), stdin))
     {
         g_eof = 1;
-        return 0; /* fim da entrada: trata como "sair" */
+        return 0;
     }
     if (!strchr(buf, '\n'))
         descartar_resto_da_linha();
@@ -1214,7 +1016,6 @@ static int ler_int(void)
     return (fim == buf) ? -1 : (int)v;
 }
 
-/* le uma linha curta; vazio mantem o valor atual de dest */
 static void ler_linha(const char *prompt, char *dest, size_t tam)
 {
     char tmp[256];
@@ -1228,12 +1029,11 @@ static void ler_linha(const char *prompt, char *dest, size_t tam)
     if (len == 0)
         return;
     for (size_t i = 0; i < len; i++)
-        if (tmp[i] == '|') /* '|' separa campos no .meta */
+        if (tmp[i] == '|')
             tmp[i] = '/';
     snprintf(dest, tam, "%s", tmp);
 }
 
-/* tela de preenchimento do cabecalho do relatorio */
 static void configurar_cabecalho(Cabecalho *c)
 {
     limpar_tela();
@@ -1252,10 +1052,6 @@ static void configurar_cabecalho(Cabecalho *c)
     c->configurado = 1;
 }
 
-/* ===== 11. NOMES DE ARQUIVO ===== */
-
-/* letra sem acento para o 2o byte de um caractere UTF-8 que comeca com 0xC3
-   (U+00C0..U+00FF); '?' = sem equivalente */
 static char letra_sem_acento(unsigned char b2)
 {
     static const char T[] =
@@ -1266,8 +1062,6 @@ static char letra_sem_acento(unsigned char b2)
     return T[b2 & 0x3F];
 }
 
-/* deixa so letras, numeros, '_' e '-' (acentos viram a letra base, espaco vira '_').
-   devolve o tamanho final; 0 = nada aproveitavel */
 static int sanear_nome(char *nome)
 {
     char out[NOME_MAX];
@@ -1295,7 +1089,6 @@ static int sanear_nome(char *nome)
     return j;
 }
 
-/* "NOME" + "meta" -> "NOME.meta"; nome vazio usa o do rascunho */
 static void caminho_de(const char *nome, const char *ext, char *dest, size_t tam)
 {
     snprintf(dest, tam, "%s.%s", nome[0] ? nome : RASCUNHO, ext);
@@ -1309,12 +1102,6 @@ static int arquivo_existe(const char *caminho)
     return f != NULL;
 }
 
-/* ===== 12. ACOES SOBRE BLOCOS (lista encadeada) =====
-   Cada acao (novo_texto, nova_tabela, ...) devolve 1 se MUDOU o documento
-   e 0 se nao; o menu usa isso para decidir se faz o autosave.
-   Posicoes (pos) sao sempre 1-based, como o usuario ve na tela. */
-
-/* proximo ID livre: maior ID da lista + 1 */
 static int obter_proximo_id_bloco(const BlocoDocumento *head)
 {
     int max_id = 0;
@@ -1324,7 +1111,6 @@ static int obter_proximo_id_bloco(const BlocoDocumento *head)
     return max_id + 1;
 }
 
-/* no na posicao pos (1..nb), ou NULL */
 static BlocoDocumento *bloco_na_pos(BlocoDocumento *head, int pos)
 {
     for (int i = 1; head && i < pos; i++)
@@ -1332,7 +1118,6 @@ static BlocoDocumento *bloco_na_pos(BlocoDocumento *head, int pos)
     return head;
 }
 
-/* aloca um no zerado do tipo pedido (a lista so recebe o no depois de pronto) */
 static BlocoDocumento *criar_bloco(int tipo)
 {
     BlocoDocumento *b = (BlocoDocumento *)calloc(1, sizeof(BlocoDocumento));
@@ -1341,7 +1126,6 @@ static BlocoDocumento *criar_bloco(int tipo)
     return b;
 }
 
-/* topo do menu do editor: uma linha por bloco */
 static void listar_blocos(const Doc *d)
 {
     printf("==================== ESTRUTURA DO DOCUMENTO ====================\n");
@@ -1373,8 +1157,6 @@ static void listar_blocos(const Doc *d)
     }
 }
 
-/* liga o no na posicao pos (1..nb+1): pos == nb+1 acrescenta no fim.
-   O no ganha um ID novo. */
 static void inserir(Doc *d, int pos, BlocoDocumento *novo)
 {
     novo->id = obter_proximo_id_bloco(d->head);
@@ -1392,7 +1174,6 @@ static void inserir(Doc *d, int pos, BlocoDocumento *novo)
     d->nb++;
 }
 
-/* quantas linhas o texto ocupa depois da quebra, ja com a linha em branco final */
 static int contar_linhas_texto(const char *texto, int alinha)
 {
     Render r = {NULL, 1, 0};
@@ -1400,7 +1181,6 @@ static int contar_linhas_texto(const char *texto, int alinha)
     return r.linhas;
 }
 
-/* le o texto do bloco; so aceita o que cabe em uma pagina. Linha vazia cancela. */
 static int ler_texto_bloco(BlocoDocumento *b)
 {
     char tmp[TAM_BUF_TEXTO * 2];
@@ -1412,10 +1192,13 @@ static int ler_texto_bloco(BlocoDocumento *b)
         if (!fgets(tmp, sizeof(tmp), stdin))
             return 0;
 
+        for (int i = 0; tmp[i] != '\0'; i++)
+            if (tmp[i] == '\t')
+                tmp[i] = ' ';
         size_t len = strcspn(tmp, "\r\n");
-        int sobrou = (tmp[len] == '\0'); /* sem \n: a linha era maior que tmp */
+        int sobrou = (tmp[len] == '\0');
         tmp[len] = '\0';
-        if (sobrou) /* descarta o resto para nao contaminar o proximo prompt */
+        if (sobrou)
             descartar_resto_da_linha();
         if (len == 0)
             return 0;
@@ -1439,7 +1222,6 @@ static int ler_texto_bloco(BlocoDocumento *b)
     }
 }
 
-/* pede alinhamento + texto para o no b. devolve 0 se cancelado */
 static int montar_texto(BlocoDocumento *b)
 {
     printf("Alinhamento: 1-Esquerda 2-Centro 3-Direita: ");
@@ -1449,7 +1231,6 @@ static int montar_texto(BlocoDocumento *b)
     return ler_texto_bloco(b);
 }
 
-/* pede fonte + colunas para o no b. devolve 0 se cancelado */
 static int montar_tabela(BlocoDocumento *b)
 {
     printf("=== SELEÇÃO DE PLANILHA ===\n");
@@ -1512,7 +1293,6 @@ static int nova_tabela(Doc *d)
     return 1;
 }
 
-/* quebra manual: vira um bloco, como sempre foi no main.c (BLOCO_QUEBRA) */
 static int nova_quebra(Doc *d)
 {
     printf("Inserir quebra ANTES de qual bloco (1-%d, ou %d para o fim)? ", d->nb, d->nb + 1);
@@ -1533,7 +1313,6 @@ static int nova_quebra(Doc *d)
     return 1;
 }
 
-/* desliga o no da lista e o libera */
 static int remover(Doc *d)
 {
     printf("Remover qual bloco (1-%d)? ", d->nb);
@@ -1563,8 +1342,6 @@ static int remover(Doc *d)
 
 static const char *NOMES_ALINHA[] = {"", "esquerda", "centro", "direita"};
 
-/* muda SO o alinhamento de um bloco de texto, mantendo o texto.
-   Recusa se, com o novo alinhamento, o texto deixar de caber numa pagina. */
 static int editar_alinhamento(BlocoDocumento *b, int pos)
 {
     printf("Novo alinhamento: 1-Esquerda 2-Centro 3-Direita: ");
@@ -1591,9 +1368,6 @@ static int editar_alinhamento(BlocoDocumento *b, int pos)
     return 1;
 }
 
-/* refaz um bloco existente (texto: so alinhamento OU texto novo; tabela:
-   nova fonte/colunas). O no novo substitui o conteudo do antigo mantendo
-   ID e posicao na lista. Se cancelar, o bloco original e mantido. */
 static int editar(Doc *d)
 {
     printf("Editar qual bloco (1-%d)? ", d->nb);
@@ -1642,28 +1416,18 @@ static int editar(Doc *d)
     }
     novo->id = atual->id;
     novo->prox = atual->prox;
-    *atual = *novo; /* o endereco de 'atual' nao muda: o no anterior continua apontando para ele */
+    *atual = *novo;
     free(novo);
     aviso("[OK] Bloco %d atualizado.", pos);
     return 1;
 }
-
-/* ===== 13. ARQUIVO .meta =====
-   Texto simples, um bloco por trecho:
-     # CABECALHO|municipio|data|sessao|tipo      (so se configurado)
-     # BLOCO_INICIO|ID:n|TIPO:1|ALINHA:a         + linha do texto
-     # BLOCO_INICIO|ID:n|TIPO:2|FONTE:f|COLS:1,0,1,...
-     # BLOCO_INICIO|ID:n|TIPO:3                  (quebra de pagina)
-     # BLOCO_FIM
-   Mesmo formato do main.c (que ignora as linhas que nao conhece). */
 
 static int salvar_meta(const char *caminho, const Doc *d)
 {
     FILE *f = fopen(caminho, "w");
     if (!f)
         return 0;
-    /* linha extra: o main.c ignora tudo que nao comeca com "# BLOCO_INICIO" */
-    /* so grava se o usuario configurou: um rascunho com cabecalho padrao nao conta como configurado */
+
     if (d->cab.configurado)
         fprintf(f, "# CABECALHO|%s|%s|%d|%s\n\n", d->cab.municipio, d->cab.data, d->cab.sessao, d->cab.tipo);
     for (const BlocoDocumento *b = d->head; b; b = b->prox)
@@ -1680,8 +1444,6 @@ static int salvar_meta(const char *caminho, const Doc *d)
     return fclose(f) == 0;
 }
 
-/* grava a cada alteracao: se o programa travar, nada se perde.
-   Documento sem nome vai para rascunho.meta; com nome, para NOME.meta. */
 static void autosalvar(const Doc *d)
 {
     char meta[NOME_MAX + 8];
@@ -1692,10 +1454,6 @@ static void autosalvar(const Doc *d)
         aviso("[ERRO] autosave falhou: não gravou %s", meta);
 }
 
-/* le o .meta para dentro de d (que deve estar vazio): cada bloco vira um no
-   anexado ao FIM da lista (guarda-se o ultimo no em 'tail', sem percorrer a
-   lista toda). Texto grande demais e cortado (com aviso) em vez de estourar
-   o buffer. Devolve 0 se nao abriu. */
 static int carregar_meta(const char *caminho, Doc *d)
 {
     FILE *f = fopen(caminho, "r");
@@ -1755,7 +1513,7 @@ static int carregar_meta(const char *caminho, Doc *d)
             else
                 cortado = 1;
         }
-        if (b->tipo < BLOCO_TEXTO || b->tipo > BLOCO_QUEBRA) /* bloco corrompido: ignora */
+        if (b->tipo < BLOCO_TEXTO || b->tipo > BLOCO_QUEBRA)
         {
             free(b);
             continue;
@@ -1780,10 +1538,6 @@ static int carregar_meta(const char *caminho, Doc *d)
     return 1;
 }
 
-/* ===== 14. SALVAR E ABRIR ===== */
-
-/* pergunta o nome do documento e o deixa "limpo" em novo[].
-   Devolve 0 se o usuario cancelou (nome vazio num documento ainda sem nome). */
 static int pedir_nome(const Doc *d, char novo[NOME_MAX])
 {
     snprintf(novo, NOME_MAX, "%s", d->nome);
@@ -1797,7 +1551,7 @@ static int pedir_nome(const Doc *d, char novo[NOME_MAX])
         ler_linha(prompt, tmp, sizeof(tmp));
 
         if (tmp[0] == '\0')
-            return d->nome[0] != '\0'; /* vazio mantem o nome atual; sem nome = cancela */
+            return d->nome[0] != '\0';
         if (sanear_nome(tmp) == 0 || strcmp(tmp, RASCUNHO) == 0)
         {
             printf("[!] Nome inválido ou reservado. Use letras, números, _ ou -.\n");
@@ -1808,11 +1562,9 @@ static int pedir_nome(const Doc *d, char novo[NOME_MAX])
     }
 }
 
-/* Fluxo de "Salvar": cabecalho (se faltar) -> mostra o documento final ->
-   ENTER -> nome -> confirma sobrescrita -> grava NOME.txt + NOME.meta */
 static void salvar_documento(Doc *d)
 {
-    if (!d->cab.configurado) /* como no main.c: pergunta uma vez ao gerar */
+    if (!d->cab.configurado)
         configurar_cabecalho(&d->cab);
 
     limpar_tela();
@@ -1850,7 +1602,7 @@ static void salvar_documento(Doc *d)
     {
         char rasc[NOME_MAX + 8];
         caminho_de("", "meta", rasc, sizeof(rasc));
-        remove(rasc); /* o rascunho virou documento com nome */
+        remove(rasc);
     }
     snprintf(d->nome, sizeof(d->nome), "%s", novo);
     aviso("[SUCESSO] Documento salvo em '%s' e estrutura em '%s'.", txt, meta);
@@ -1858,7 +1610,6 @@ static void salvar_documento(Doc *d)
 
 #define MAX_DOCS 64
 
-/* lista os *.meta da pasta atual (sem a extensao) */
 static int listar_metas(char nomes[][NOME_MAX])
 {
     DIR *dir = opendir(".");
@@ -1880,7 +1631,6 @@ static int listar_metas(char nomes[][NOME_MAX])
     return n;
 }
 
-/* esvazia o documento: LIBERA a lista de blocos antes de zerar a struct */
 static void documento_vazio(Doc *d)
 {
     liberar_blocos(d->head);
@@ -1938,11 +1688,6 @@ static int abrir_documento(Doc *d)
     return 1;
 }
 
-/* ===== 15. MENU DO EDITOR =====
-   Cada volta do laco: limpa a tela -> lista os blocos -> mostra avisos ->
-   le a opcao -> executa -> se mudou algo, AUTOSAVE (obrigatorio). */
-
-/* devolve quando o usuario escolhe Sair (volta ao menu inicial) */
 static void editar_documento(Doc *d)
 {
     for (;;)
@@ -1992,29 +1737,19 @@ static void editar_documento(Doc *d)
         default: aviso("Opção inválida!");
         }
         if (mudou)
-            autosalvar(d); /* a cada alteracao, obrigatoriamente */
+            autosalvar(d);
     }
 }
 
-
-/* ===== 16. BASE DE DADOS: GERAR ALEATORIOS E APAGAR =====
-   Os 5 arquivos .txt (FONTES[]) sao a "base". Aqui se cria dados de teste
-   e se esvazia a base. Cada gerador le as LISTAS ENCADEADAS (carregar_*) do
-   que ja existe. Ordem de dependencia: vereadores e reunioes -> projetos
-   (precisam de autor) -> presencas (reuniao x vereador) -> votacoes
-   (so votam os vereadores presentes). */
-
 #define N_ARR(a) ((int)(sizeof(a) / sizeof((a)[0])))
-#define MAX_VER 200 /* presença = reuniões x vereadores; votação = projetos x vereadores */
+#define MAX_VER 200
 #define MAX_REU 100
 #define MAX_PROJ 200
 #define ID_LIMITE 1000000
-#define MAX_MATRIZ (50L * 1000 * 1000) /* bytes da tabela reuniao x vereador */
+#define MAX_MATRIZ (50L * 1000 * 1000)
 
-/* ordem de exibição (índices em FONTES): quem vem antes alimenta quem vem depois */
 static const int ORDEM_DADOS[5] = {IDX_VER, IDX_REU, IDX_PROJ, IDX_PRES, IDX_VOT};
 
-/* no Windows RAND_MAX = 32767: junta duas chamadas para sortear em faixas maiores */
 static long aleat(long n)
 {
     return (((long)rand() << 15) ^ rand()) % n;
@@ -2022,7 +1757,6 @@ static long aleat(long n)
 
 static unsigned char g_usado[ID_LIMITE];
 
-/* sorteia um ID em [lo, hi] que ainda não saiu; reinicie com memset(g_usado) */
 static long id_unico(long lo, long hi)
 {
     long v;
@@ -2038,31 +1772,23 @@ static void data_aleatoria(char *dest, size_t tam)
     snprintf(dest, tam, "%02d/%02d/2026", (int)aleat(28) + 1, (int)aleat(12) + 1);
 }
 
-/* quantos registros a lista do arquivo idx tem hoje (le o arquivo para a lista) */
 static int contar_registros(int idx)
 {
-    const char *arq = FONTES[idx].arquivo;
-    int n = 0;
-#define CONTAR(T, carregar, liberar) \
-    {                                \
-        T *h = carregar(arq);        \
-        for (T *p = h; p; p = p->prox) \
-            n++;                     \
-        liberar(h);                  \
-    }
-    switch (idx)
+    FILE *f = fopen(FONTES[idx].arquivo, "r");
+    if (!f)
+        return 0;
+    int n = 0, inicio = 1;
+    char buf[1024];
+    while (fgets(buf, sizeof(buf), f))
     {
-    case IDX_VER: CONTAR(Vereador, carregar_vereadores, liberar_vereadores) break;
-    case IDX_REU: CONTAR(Reuniao, carregar_reunioes, liberar_reunioes) break;
-    case IDX_VOT: CONTAR(Votacao, carregar_votacoes, liberar_votacoes) break;
-    case IDX_PROJ: CONTAR(Projeto, carregar_projetos, liberar_projetos) break;
-    case IDX_PRES: CONTAR(Presenca, carregar_presencas, liberar_presencas) break;
+        if (inicio && buf[0] != '\n' && buf[0] != '\r' && buf[0] != '#')
+            n++;
+        inicio = (strchr(buf, '\n') != NULL);
     }
-#undef CONTAR
+    fclose(f);
     return n;
 }
 
-/* pede uma quantidade em 1..max; 0 = cancelou/inválido */
 static int pedir_qtd(const char *rotulo, int max)
 {
     printf("%s (1-%d, 0 cancela): ", rotulo, max);
@@ -2079,8 +1805,6 @@ static int confirmar_substituir(int idx)
     return ler_int() == 1;
 }
 
-/* geradores: devolvem o nº de registros gravados, -1 se não abriu o arquivo,
-   -2 se falta a base da qual dependem, -3 se a combinação é grande demais */
 static int gerar_vereadores(int n)
 {
     FILE *f = fopen(FONTES[IDX_VER].arquivo, "w");
@@ -2118,7 +1842,6 @@ static int gerar_reunioes(int n)
     return n;
 }
 
-/* o autor de cada projeto e um vereador sorteado da LISTA de vereadores */
 static int gerar_projetos(int n)
 {
     Vereador *lv = carregar_vereadores(FONTES[IDX_VER].arquivo);
@@ -2150,7 +1873,6 @@ static int gerar_projetos(int n)
     return n;
 }
 
-/* uma linha para cada par reuniao x vereador (percorre as duas listas) */
 static int gerar_presencas(void)
 {
     Vereador *lv = carregar_vereadores(FONTES[IDX_VER].arquivo);
@@ -2187,10 +1909,6 @@ static int gerar_presencas(void)
     return ret;
 }
 
-/* Cada projeto e votado numa reuniao sorteada, so pelos vereadores PRESENTES
-   nela. Para saber "esse vereador estava presente?" em O(1) monta-se uma
-   tabela plana [reuniao][vereador] a partir da lista de presencas
-   (indice = reuniao * colunas + vereador). */
 static int gerar_votacoes_completas_otimizada(const char *caminho_saida, Reuniao *lista_reunioes,
                                               Projeto *lista_projetos, Vereador *lista_vereadores,
                                               Presenca *lista_presencas)
@@ -2251,7 +1969,6 @@ static int gerar_votacoes_completas_otimizada(const char *caminho_saida, Reuniao
     return n;
 }
 
-/* carrega as listas, gera as votacoes e libera tudo */
 static int gerar_votacoes(void)
 {
     Reuniao *lr = carregar_reunioes(FONTES[IDX_REU].arquivo);
@@ -2333,7 +2050,7 @@ static void menu_gerar_dados(void)
         else if (idx == IDX_PROJ)
             qtd = pedir_qtd("Quantos projetos", MAX_PROJ);
         else
-            qtd = 1; /* presenças/votações: derivadas das outras bases */
+            qtd = 1;
         if (!qtd || !confirmar_substituir(idx))
         {
             aviso("Geração cancelada.");
@@ -2386,7 +2103,7 @@ static void menu_apagar_dados(void)
         int falhas = 0;
         for (int i = de; i <= ate; i++)
         {
-            FILE *f = fopen(FONTES[ORDEM_DADOS[i]].arquivo, "w"); /* esvazia, mantém o arquivo */
+            FILE *f = fopen(FONTES[ORDEM_DADOS[i]].arquivo, "w");
             if (f)
                 fclose(f);
             else
@@ -2399,17 +2116,15 @@ static void menu_apagar_dados(void)
     }
 }
 
-/* ===== 17. MAIN: MENU INICIAL ===== */
-
 int main(void)
 {
-    srand((unsigned)time(NULL)); /* semente: dados aleatorios diferentes a cada execucao */
+    srand((unsigned)time(NULL));
 #ifdef _WIN32
     SetConsoleOutputCP(65001);
     SetConsoleCP(65001);
 #endif
 
-    static Doc doc; /* comeca zerada: head == NULL */
+    static Doc doc;
 
     for (;;)
     {
@@ -2446,6 +2161,6 @@ int main(void)
         else
             aviso("Opção inválida!");
     }
-    liberar_blocos(doc.head); /* free geral da lista de blocos */
+    liberar_blocos(doc.head);
     return 0;
 }

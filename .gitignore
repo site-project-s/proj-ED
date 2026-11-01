@@ -1,0 +1,9 @@
+# executáveis e arquivos gerados pelo programa
+*.exe
+relatorio.txt
+relatorio_estrutura.meta
+teste_saida.txt
+teste_estrutura.meta
+
+# cópias de segurança locais
+BACKUP/
