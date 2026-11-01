@@ -1538,6 +1538,25 @@ static int carregar_meta(const char *caminho, Doc *d)
     return 1;
 }
 
+static int nome_de_base(const char *nome)
+{
+    for (int i = 0; i < N_FONTES; i++)
+    {
+        const char *arq = FONTES[i].arquivo;
+        size_t l = strlen(arq);
+        if (l > 4 && strcmp(arq + l - 4, ".txt") == 0)
+            l -= 4;
+        if (strlen(nome) != l)
+            continue;
+        size_t k = 0;
+        while (k < l && tolower((unsigned char)nome[k]) == tolower((unsigned char)arq[k]))
+            k++;
+        if (k == l)
+            return 1;
+    }
+    return 0;
+}
+
 static int pedir_nome(const Doc *d, char novo[NOME_MAX])
 {
     snprintf(novo, NOME_MAX, "%s", d->nome);
@@ -1555,6 +1574,11 @@ static int pedir_nome(const Doc *d, char novo[NOME_MAX])
         if (sanear_nome(tmp) == 0 || strcmp(tmp, RASCUNHO) == 0)
         {
             printf("[!] Nome inválido ou reservado. Use letras, números, _ ou -.\n");
+            continue;
+        }
+        if (nome_de_base(tmp))
+        {
+            printf("[!] '%s' é o nome de uma base de dados (%s.txt). Escolha outro nome.\n", tmp, tmp);
             continue;
         }
         snprintf(novo, NOME_MAX, "%s", tmp);
@@ -1657,6 +1681,277 @@ static int novo_documento(Doc *d)
     return 1;
 }
 
+typedef struct
+{
+    int tipo;
+    int alinhamento;
+    int fonte;
+    int colunas[MAX_COLS];
+    char texto[TAM_BUF_TEXTO];
+    char chave[TAM_BUF_TEXTO];
+} ItemTxt;
+
+static void montar_chave_texto(char *dest, size_t tam, const char *texto)
+{
+    size_t j = 0;
+    if (tam < 2)
+        return;
+    dest[j++] = 'T';
+    for (const char *p = texto; *p && j < tam - 1; p++)
+        if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n')
+            dest[j++] = *p;
+    dest[j] = '\0';
+}
+
+static void montar_chave_tabela(char *dest, size_t tam, int fonte, const int *colunas)
+{
+    snprintf(dest, tam, "B%d:%d%d%d%d%d%d", fonte, colunas[0] != 0, colunas[1] != 0, colunas[2] != 0,
+             colunas[3] != 0, colunas[4] != 0, colunas[5] != 0);
+}
+
+static void chave_do_bloco(const BlocoDocumento *b, char *dest, size_t tam)
+{
+    if (b->tipo == BLOCO_TEXTO)
+        montar_chave_texto(dest, tam, b->conteudo_texto);
+    else if (b->tipo == BLOCO_TABELA)
+        montar_chave_tabela(dest, tam, b->fonte_tabela, b->colunas);
+    else
+        snprintf(dest, tam, "Q");
+}
+
+static ItemTxt *novo_item(ItemTxt **v, int *n, int *cap, int tipo)
+{
+    if (*n == *cap)
+    {
+        int nova = *cap ? *cap * 2 : 16;
+        ItemTxt *m = (ItemTxt *)realloc(*v, (size_t)nova * sizeof(ItemTxt));
+        if (!m)
+            return NULL;
+        *v = m;
+        *cap = nova;
+    }
+    ItemTxt *it = &(*v)[(*n)++];
+    memset(it, 0, sizeof(*it));
+    it->tipo = tipo;
+    return it;
+}
+
+static void marcar_colunas_do_cabecalho(const char *linha, ItemTxt *it)
+{
+    const Fonte *F = &FONTES[it->fonte - 1];
+    char copia[LINHA_BUF];
+    snprintf(copia, sizeof(copia), "%s", linha);
+    for (char *tok = strtok(copia, "|"); tok; tok = strtok(NULL, "|"))
+    {
+        while (*tok == ' ')
+            tok++;
+        size_t l = strlen(tok);
+        while (l > 0 && (tok[l - 1] == ' ' || tok[l - 1] == '\r' || tok[l - 1] == '\n'))
+            tok[--l] = '\0';
+        if (l == 0)
+            continue;
+        int cortado = l > 3 && strcmp(tok + l - 3, "...") == 0;
+        for (int c = 0; c < F->n_cols; c++)
+            if (strcmp(tok, F->nomes[c]) == 0 || (cortado && strncmp(tok, F->nomes[c], l - 3) == 0))
+            {
+                it->colunas[c] = 1;
+                break;
+            }
+    }
+}
+
+static void fechar_texto(ItemTxt **v, int *n, int *cap, char *acum, int alinha)
+{
+    if (acum[0] == '\0')
+        return;
+    ItemTxt *it = novo_item(v, n, cap, BLOCO_TEXTO);
+    if (it)
+    {
+        snprintf(it->texto, sizeof(it->texto), "%s", acum);
+        it->alinhamento = alinha;
+        montar_chave_texto(it->chave, sizeof(it->chave), it->texto);
+    }
+    acum[0] = '\0';
+}
+
+static int ler_itens_txt(const char *caminho, ItemTxt **out)
+{
+    FILE *f = fopen(caminho, "r");
+    if (!f)
+        return -1;
+    ItemTxt *v = NULL;
+    int n = 0, cap = 0, barras = 0, apos_quebra = 0, espera_cab = 0;
+    char linha[LINHA_BUF * 2], acum[TAM_BUF_TEXTO] = "";
+    int alinha = ALINHA_ESQUERDA;
+
+    while (fgets(linha, sizeof(linha), f))
+    {
+        linha[strcspn(linha, "\r\n")] = '\0';
+        if (strncmp(linha, "======", 6) == 0)
+        {
+            if (++barras >= 3)
+                break;
+            continue;
+        }
+        if (barras < 2)
+            continue;
+        if (linha[0] == '\0')
+        {
+            if (!apos_quebra)
+                fechar_texto(&v, &n, &cap, acum, alinha);
+            continue;
+        }
+        if (linha[0] == '-' && strstr(linha, "fim da página"))
+        {
+            apos_quebra = 1;
+            if (strstr(linha, "[manual]"))
+            {
+                fechar_texto(&v, &n, &cap, acum, alinha);
+                ItemTxt *it = novo_item(&v, &n, &cap, BLOCO_QUEBRA);
+                if (it)
+                    snprintf(it->chave, sizeof(it->chave), "Q");
+            }
+            continue;
+        }
+        apos_quebra = 0;
+        if (linha[0] == '+')
+            continue;
+        if (linha[0] == '|')
+        {
+            if (espera_cab && n > 0)
+            {
+                marcar_colunas_do_cabecalho(linha, &v[n - 1]);
+                montar_chave_tabela(v[n - 1].chave, sizeof(v[n - 1].chave), v[n - 1].fonte, v[n - 1].colunas);
+                espera_cab = 0;
+            }
+            continue;
+        }
+        if (strncmp(linha, "Tabela: ", 8) == 0)
+        {
+            fechar_texto(&v, &n, &cap, acum, alinha);
+            char titulo[LINHA_BUF * 2];
+            snprintf(titulo, sizeof(titulo), "%s", linha + 8);
+            char *cont = strstr(titulo, " (continuação)");
+            if (cont)
+                *cont = '\0';
+            int fonte = 0;
+            for (int i = 0; i < N_FONTES; i++)
+                if (strcmp(titulo, FONTES[i].titulo) == 0)
+                    fonte = i + 1;
+            if (fonte && !(cont && n > 0 && v[n - 1].tipo == BLOCO_TABELA && v[n - 1].fonte == fonte))
+            {
+                ItemTxt *it = novo_item(&v, &n, &cap, BLOCO_TABELA);
+                if (it)
+                {
+                    it->fonte = fonte;
+                    espera_cab = 1;
+                }
+            }
+            continue;
+        }
+
+        int esp = 0;
+        while (linha[esp] == ' ')
+            esp++;
+        if (acum[0] == '\0')
+        {
+            int len = larg_visual(linha + esp);
+            alinha = esp == 0 ? ALINHA_ESQUERDA : (esp + len >= LARGURA_LINHA ? ALINHA_DIREITA : ALINHA_CENTRO);
+        }
+        size_t usado = strlen(acum);
+        if (usado + strlen(linha + esp) + 2 < sizeof(acum))
+            snprintf(acum + usado, sizeof(acum) - usado, "%s%s", usado ? " " : "", linha + esp);
+    }
+    fechar_texto(&v, &n, &cap, acum, alinha);
+    fclose(f);
+    *out = v;
+    return n;
+}
+
+static int sincronizar_com_txt(Doc *d, const char *txt)
+{
+    ItemTxt *itens = NULL;
+    int m = ler_itens_txt(txt, &itens);
+    if (m < 0)
+        return 0;
+
+    int n = d->nb;
+    BlocoDocumento **blocos = (BlocoDocumento **)malloc((size_t)(n + 1) * sizeof(*blocos));
+    char(*chaves)[TAM_BUF_TEXTO] = (char(*)[TAM_BUF_TEXTO])malloc((size_t)(n + 1) * TAM_BUF_TEXTO);
+    int *lcs = (int *)calloc((size_t)(n + 1) * (size_t)(m + 1), sizeof(int));
+    if (!blocos || !chaves || !lcs)
+    {
+        free(blocos);
+        free(chaves);
+        free(lcs);
+        free(itens);
+        return 0;
+    }
+    int i = 0;
+    for (BlocoDocumento *b = d->head; b; b = b->prox, i++)
+    {
+        blocos[i] = b;
+        chave_do_bloco(b, chaves[i], TAM_BUF_TEXTO);
+    }
+#define LCS(x, y) lcs[(x) * (m + 1) + (y)]
+    for (int x = n - 1; x >= 0; x--)
+        for (int y = m - 1; y >= 0; y--)
+            LCS(x, y) = strcmp(chaves[x], itens[y].chave) == 0
+                            ? LCS(x + 1, y + 1) + 1
+                            : (LCS(x + 1, y) > LCS(x, y + 1) ? LCS(x + 1, y) : LCS(x, y + 1));
+
+    BlocoDocumento *novo_head = NULL, *tail = NULL;
+    int removidos = 0, adicionados = 0, a = 0, b = 0;
+    while (a < n || b < m)
+    {
+        BlocoDocumento *saida;
+        if (a < n && b < m && strcmp(chaves[a], itens[b].chave) == 0)
+        {
+            saida = blocos[a++];
+            b++;
+        }
+        else if (a < n && (b >= m || LCS(a + 1, b) >= LCS(a, b + 1)))
+        {
+            free(blocos[a++]);
+            removidos++;
+            continue;
+        }
+        else
+        {
+            ItemTxt *it = &itens[b++];
+            saida = criar_bloco(it->tipo);
+            if (!saida)
+                continue;
+            saida->alinhamento = it->alinhamento ? it->alinhamento : ALINHA_ESQUERDA;
+            saida->fonte_tabela = it->fonte;
+            memcpy(saida->colunas, it->colunas, sizeof(saida->colunas));
+            snprintf(saida->conteudo_texto, sizeof(saida->conteudo_texto), "%s", it->texto);
+            adicionados++;
+        }
+        saida->prox = NULL;
+        if (tail)
+            tail->prox = saida;
+        else
+            novo_head = saida;
+        tail = saida;
+    }
+#undef LCS
+    int total = 0, maior = 0;
+    for (BlocoDocumento *x = novo_head; x; x = x->prox, total++)
+        if (x->id > maior)
+            maior = x->id;
+    for (BlocoDocumento *x = novo_head; x; x = x->prox)
+        if (x->id == 0)
+            x->id = ++maior;
+    d->head = novo_head;
+    d->nb = total;
+    free(blocos);
+    free(chaves);
+    free(lcs);
+    free(itens);
+    return removidos + adicionados;
+}
+
 static int abrir_documento(Doc *d)
 {
     char nomes[MAX_DOCS][NOME_MAX];
@@ -1682,9 +1977,14 @@ static int abrir_documento(Doc *d)
         aviso("[ERRO] não abriu '%s'.", meta);
         return 0;
     }
+    char txt[NOME_MAX + 8];
+    caminho_de(nomes[op - 1], "txt", txt, sizeof(txt));
+    int ajustes = arquivo_existe(txt) ? sincronizar_com_txt(d, txt) : 0;
+    if (ajustes)
+        salvar_meta(meta, d);
     if (strcmp(nomes[op - 1], RASCUNHO) != 0)
         snprintf(d->nome, sizeof(d->nome), "%s", nomes[op - 1]);
-    aviso("[OK] '%s' aberto (%d blocos).", meta, d->nb);
+    aviso("[OK] '%s' aberto (%d blocos).%s", meta, d->nb, ajustes ? " Ajustado ao .txt." : "");
     return 1;
 }
 
